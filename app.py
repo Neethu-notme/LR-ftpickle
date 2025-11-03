@@ -10,7 +10,9 @@ if not os.path.exists(model_path):
     st.error("❌ logistic_model.pkl not found! Please ensure it's in the same folder as this script.")
 else:
     with open(model_path, "rb") as f:
-        model = pickle.load(f)
+        #model = pickle.load(f)
+        model = None
+        st.warning("⚠️ Model not loaded. This is a test run.")
 
     # --- Streamlit UI ---
     st.title("🚢 Titanic Survival Predictor (Logistic Regression)")
@@ -48,3 +50,4 @@ else:
         except Exception as e:
             st.error(f"⚠️ Error during prediction: {e}")
             st.info("Make sure your logistic_model.pkl was trained using the same features.")
+
