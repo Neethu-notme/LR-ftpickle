@@ -1,53 +1,75 @@
-import os
-import pickle
 import streamlit as st
 import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder
+from sklearn.linear_model import LogisticRegression
 
-# ✅ Load model safely using pickle
-model_path = os.path.join(os.path.dirname(__file__), "logistic_model.pkl")
+# --------------------------
+# App Title
+# --------------------------
+st.title("🚢 Titanic Survival Prediction (Trained Inside Streamlit)")
+st.write("This app trains a Logistic Regression model on the Titanic dataset and predicts survival.")
 
-if not os.path.exists(model_path):
-    st.error("❌ logistic_model.pkl not found! Please ensure it's in the same folder as this script.")
-else:
-    with open(model_path, "rb") as f:
-        #model = pickle.load(f)
-        model = None
-        st.warning("⚠️ Model not loaded. This is a test run.")
+# --------------------------
+# Load dataset
+# --------------------------
+uploaded_file = st.file_uploader("Upload Titanic dataset CSV (with columns like Pclass, Sex, Age, Fare, Embarked, Survived)", type=["csv"])
 
-    # --- Streamlit UI ---
-    st.title("🚢 Titanic Survival Predictor (Logistic Regression)")
-    st.write("Predict the survival probability of a Titanic passenger using a trained Logistic Regression model.")
+if uploaded_file:
+    df = pd.read_csv(uploaded_file)
+    st.write("✅ Dataset loaded successfully!")
+    st.write(df.head())
 
-    # --- Inputs ---
-    pclass = st.selectbox("Passenger Class (1 = 1st, 2 = 2nd, 3 = 3rd)", [1, 2, 3])
+    # --------------------------
+    # Preprocessing
+    # --------------------------
+    le_sex = LabelEncoder()
+    le_embarked = LabelEncoder()
+
+    df['Sex'] = le_sex.fit_transform(df['Sex'])
+    df['Embarked'].fillna('S', inplace=True)
+    df['Embarked'] = le_embarked.fit_transform(df['Embarked'])
+
+    df = df.fillna(df.mean(numeric_only=True))
+
+    # --------------------------
+    # Train model
+    # --------------------------
+    X = df[['Pclass', 'Sex', 'Age', 'Fare', 'Embarked']]
+    y = df['Survived']
+
+    model = LogisticRegression()
+    model.fit(X, y)
+    st.success("✅ Model trained successfully!")
+
+    # --------------------------
+    # Prediction inputs
+    # --------------------------
+    st.subheader("🔍 Predict Survival")
+    pclass = st.selectbox("Passenger Class", [1, 2, 3])
     sex = st.selectbox("Sex", ["male", "female"])
     age = st.number_input("Age", min_value=0, max_value=100, value=25)
-    sibsp = st.number_input("Siblings/Spouses aboard (SibSp)", min_value=0, max_value=10, value=0)
-    parch = st.number_input("Parents/Children aboard (Parch)", min_value=0, max_value=10, value=0)
     fare = st.number_input("Fare", min_value=0.0, max_value=600.0, value=50.0)
-    embarked = st.selectbox("Port of Embarkation", ["C", "Q", "S"])
+    embarked = st.selectbox("Embarked Port", ["C", "Q", "S"])
 
-    # --- Data for prediction ---
+    # Encode user input
     input_data = pd.DataFrame({
         'Pclass': [pclass],
-        'Sex': [sex],
+        'Sex': [le_sex.transform([sex])[0]],
         'Age': [age],
-        'SibSp': [sibsp],
-        'Parch': [parch],
         'Fare': [fare],
-        'Embarked': [embarked]
+        'Embarked': [le_embarked.transform([embarked])[0]]
     })
 
-    # --- Prediction ---
+    # --------------------------
+    # Predict
+    # --------------------------
     if st.button("Predict Survival"):
-        try:
-            prediction = model.predict(input_data)[0]
-            probability = model.predict_proba(input_data)[0][1]
+        pred_prob = model.predict_proba(input_data)[0][1]
+        pred = model.predict(input_data)[0]
 
-            st.subheader("🎯 Prediction Result:")
-            st.write(f"**Prediction:** {'✅ Survived' if prediction == 1 else '❌ Did not survive'}")
-            st.write(f"**Survival Probability:** {probability:.2f}")
-        except Exception as e:
-            st.error(f"⚠️ Error during prediction: {e}")
-            st.info("Make sure your logistic_model.pkl was trained using the same features.")
+        st.write(f"**Prediction:** {'Survived ✅' if pred == 1 else 'Did not survive ❌'}")
+        st.write(f"**Survival Probability:** {pred_prob:.2f}")
 
+else:
+    st.warning("👆 Please upload your Titanic dataset CSV to start.")
